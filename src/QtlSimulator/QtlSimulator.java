@@ -32,10 +32,8 @@ public class QtlSimulator {
 	}
 
 	public static void simulateQTLs() throws IOException{
-		PoissonDistribution poisonDistribution = new PoissonDistribution(commandLineOptions.getError());
+		PoissonDistribution poisonDistributionNoise= new PoissonDistribution(commandLineOptions.getNoise());
 		
-
-
 		new File(commandLineOptions.getOutfolder()).mkdirs();
 		File simulatedExpressionFile = new File(commandLineOptions.getOutfolder()+"/simulatedExpression.csv");
 		FileOutputStream simulatedExpressionStream = new FileOutputStream(simulatedExpressionFile);
@@ -73,13 +71,13 @@ public class QtlSimulator {
 				// NormalDistribution normalDistribution =  new NormalDistribution(0, 2);
 				double coefficientCelltype = 1;
 				// Error is in poison distribution with mean from command line option -e
-				double error = poisonDistribution.sample();
+				double noise = poisonDistributionNoise.sample();
 				// write the QTL name in first column
 				expressionWriter.write("QTL_"+Integer.toString(qtlCounter));
 				genotypeWriter.write("QTL_"+Integer.toString(qtlCounter));
 				// loop over the number of samples and calculate expression level
 				for (int s = 0; s < commandLineOptions.getSampleSize(); s++){
-					double simulatedExpression = error;
+					double simulatedExpression = noise;
 					// genotype randomly 0, 1 or 2
 					int genotype = new Random().ints(1, 0, 3).findFirst().getAsInt();
 					for (int z = 0; z <  commandLineOptions.getCellcountPercentages().length; z++){

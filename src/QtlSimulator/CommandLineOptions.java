@@ -13,7 +13,7 @@ public class CommandLineOptions {
 	private int numberOfQtls = 100;
 	private String outfolder;
 	private int sampleSize = 100;
-	private int error = 10;
+	private int noise = 4;
 	public void parseCommandLine(String[] args) throws ParseException {
 		/*
 		 * Standard command line parsing.
@@ -28,7 +28,7 @@ public class CommandLineOptions {
 		Option help = new Option("help", "print this message");
 		Option cellcountPercentagesOption = Option.builder("c").required(false).hasArg().longOpt("cellcount_percentages")
 				.desc("The cell type percentages around which a distribution of % will be used").build();
-		Option errorOption = Option.builder("e").required(false).hasArg().longOpt("error")
+		Option noiseOption = Option.builder("e").required(false).hasArg().longOpt("error")
 				.desc("The mean of poisson distribution from which error is drawn").build();
 		Option numberOfQtlsOption = Option.builder("n").required(false).hasArg().longOpt("number_of_qtls_per_group")
 				.desc("The number of QTLs to simulate per genotype group").build();
@@ -37,7 +37,7 @@ public class CommandLineOptions {
 		Option sampleSizeOption = Option.builder("s").required(false).hasArg().longOpt("sample_size")
 				.desc("Number of samples to use").build();
 		
-		options.addOption(errorOption);
+		options.addOption(noiseOption);
 		options.addOption(help);
 		options.addOption(cellcountPercentagesOption);
 		options.addOption(numberOfQtlsOption);
@@ -68,8 +68,8 @@ public class CommandLineOptions {
 				throw new IllegalArgumentException("Cellcount % have to add up to 100%, added up to: "+Double.toString(total));
 			}
 		}
-		if(cmdLine.hasOption("error")){
-			error = Integer.parseInt(cmdLine.getOptionValue("error"));
+		if(cmdLine.hasOption("noise")){
+			noise = Integer.parseInt(cmdLine.getOptionValue("noise"));
 		}
 		if(cmdLine.hasOption("number_of_qtls_per_group")){
 			numberOfQtls = Integer.parseInt(cmdLine.getOptionValue("number_of_qtls_per_group"));
@@ -91,7 +91,7 @@ public class CommandLineOptions {
 		System.out.printf("Number of QTLs to write (-n): %s\n", numberOfQtls);
 		System.out.printf("Outfolder: (-o): %s\n", outfolder);
 		System.out.printf("Samplesize: (-s): %s\n", sampleSize);
-		System.out.printf("Error: (-e): %s\n", error);
+		System.out.printf("Noise: (-e): %s\n", noise);
 		System.out.println("=================================================");
 	}
 	public double[] getCellcountPercentages(){
@@ -106,7 +106,7 @@ public class CommandLineOptions {
 	public int getSampleSize(){
 		return (sampleSize);
 	}
-	public int getError(){
-		return (error);
+	public int getNoise(){
+		return (noise);
 	}
 }
