@@ -13,7 +13,7 @@ public class CommandLineOptions {
 	private int numberOfQtls = 100;
 	private String outfolder;
 	private int sampleSize = 100;
-	private int noise = 4;
+	private int noise = 6;
 	public void parseCommandLine(String[] args) throws ParseException {
 		/*
 		 * Standard command line parsing.
