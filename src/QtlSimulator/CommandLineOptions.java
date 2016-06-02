@@ -10,7 +10,7 @@ import org.apache.commons.cli.ParseException;
 
 public class CommandLineOptions {
 	private double[] cellcountPercentages = {70, 20, 7, 3};
-	private int numberOfQtls = 100;
+	private int numberOfQtls = 1000;
 	private String outfolder;
 	private int sampleSize = 100;
 	private int noise = 10;

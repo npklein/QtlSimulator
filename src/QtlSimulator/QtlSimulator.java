@@ -23,7 +23,7 @@ public class QtlSimulator {
 	private static BufferedWriter expressionWriter;
 	private static BufferedWriter genotypeWriter;
 	private static BufferedWriter infoWriter;
-    private static HashMap<String, BufferedWriter> expressionPerCelltypeWriterMap = new HashMap<String, BufferedWriter>();
+	private static HashMap<String, BufferedWriter> expressionPerCelltypeWriterMap = new HashMap<String, BufferedWriter>();
 	public static void main(String[] args) throws Exception {
 		/*
 		 * Simulate QTL data with 
@@ -61,7 +61,7 @@ public class QtlSimulator {
 		File infoFile = new File(commandLineOptions.getOutfolder()+"/info.csv");
 		FileOutputStream infoStream = new FileOutputStream(infoFile);
 		infoWriter = new BufferedWriter(new OutputStreamWriter(infoStream));
-		
+
 		infoWriter.write("QTL_name");
 		for(int c = 0; c < commandLineOptions.getCellcountPercentages().length; c++){
 			infoWriter.write("\tinteractionCelltype_"+Integer.toString(c));
@@ -78,7 +78,7 @@ public class QtlSimulator {
 		genotypeWriter.newLine();
 
 	}
-	
+
 	public static void simulateQTLs() throws IOException{		
 		initializeFiles();
 
@@ -86,8 +86,13 @@ public class QtlSimulator {
 		 * Simulate expression, genotype and cellcount %. The cellcount % are distributions around the pre-selected means. The expression
 		 * is y = error + (B1 * cellcount) + (B2 * genotype)
 		 */
-		int genotypeCoefficientGroups = 3;
-		int interactionCoefficientGroups = 3;
+		//int genotypeCoefficientGroups = 3;
+		//int interactionCoefficientGroups = 30;
+		double[] interactionCoefficientGroups = new double[]{5,4,3,2.8,2.6,2.4,2.2,2.0,1.8,1.6,1.4,1.2,1,0.7,0.4,
+				-5,-4,-3,-2.8,-2.6,-2.4,-2.2,-2.0,-1.8,-1.6,-1.4,-1.2,-1,-0.7,-0.4};
+		double[] genotypeCoefficientGroups = new double[]{5,4,3,2.8,2.6,2.4,2.2,2.0,1.8,1.6,1.4,1.2,1,0.7,0.4,
+				-5,-4,-3,-2.8,-2.6,-2.4,-2.2,-2.0,-1.8,-1.6,-1.4,-1.2,-1,-0.7,-0.4};
+		double[] minorAlleleFrequencyGroups = new double[]{0.0001, 0.001, 0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5};
 		int qtlCounter = 1;
 
 		/*
@@ -114,53 +119,59 @@ public class QtlSimulator {
 												(interactionCoefficient * genotype * cellcountFactor);
 		 */
 		Map<String, HashMap<String, Double>> cellcountsPerSample = writeCellCountFile();
-		NormalDistribution celltypeCoefficientDistribution = new NormalDistribution(10, 0.5);
-		for(int j = 0; j < genotypeCoefficientGroups; j++){ 
-			for (int y = 0; y < interactionCoefficientGroups; y++){
+		NormalDistribution celltypeCoefficientDistribution = new NormalDistribution(10, 1);
+		int q = 0;
+		for(double genotypeCoefficientMean : genotypeCoefficientGroups){ 
+			//for (int y = 0; y < interactionCoefficientGroups; y++){
+			for (double interactionCoefficientMean : interactionCoefficientGroups){
 				// make a normal distribution around the given mean distribution so that each gene has a different (altho close to given) mean expression distribution
 				// the SD of this distribution is large as genes can have a large difference in expression levels
 				NormalDistribution noiseDistribution = new NormalDistribution(commandLineOptions.getNoise(), commandLineOptions.getNoise()/4);
-				NormalDistribution genotypeCoeficientDistribution = new NormalDistribution(-3 + (j*3), 0.3);
-				NormalDistribution interactioncCefficientDistribution = new NormalDistribution(-3+ (y*3), 0.3);
-				// Make i number of QTLs
-				for (int i = 0; i < commandLineOptions.getNumberOfQtls()/(genotypeCoefficientGroups*interactionCoefficientGroups); i++){
-					// write the QTL name in first column
-					expressionWriter.write("QTL_"+Integer.toString(qtlCounter));
-					genotypeWriter.write("QTL_"+Integer.toString(qtlCounter));
-					// loop over the number of samples and calculate expression level
-					double averageCelltypeCoefficient = 0;
-					double averageGenotypeCoefficient = 0;
-					infoWriter.write("QTL_"+Integer.toString(qtlCounter));
-					for (int s = 0; s < commandLineOptions.getSampleSize(); s++){
-						double celltypeCoefficient = celltypeCoefficientDistribution.sample();
-						averageCelltypeCoefficient += celltypeCoefficient/commandLineOptions.getSampleSize();
-						double genotypeCoefficient = genotypeCoeficientDistribution.sample();
-						averageGenotypeCoefficient += genotypeCoefficient/commandLineOptions.getSampleSize();
-						double interactionCoefficient = interactioncCefficientDistribution.sample();
-						// Get the expression level for current QTL and current Sample. SD is low as between samples should not be high difference of "base" expression level 
-						// (variance should be mostly in the genotype and interaction coefficient)
-						double noiseSample = noiseDistribution.sample();
-						NormalDistribution noise = new NormalDistribution(noiseSample, Math.sqrt(Math.pow(noiseSample/6.0,2)));
-						double biologicalNoise = noise.sample();
-						double simulatedExpression = biologicalNoise;
-						// genotype randomly 0, 1 or 2
-						int genotype = new Random().ints(1, 0, 3).findFirst().getAsInt();
-						for (int c = 0; c <  commandLineOptions.getCellcountPercentages().length; c++){
-							String celltypeName = "celltype_"+Integer.toString(c);
-							String sampleName = "sample"+Integer.toString(s);
-							if(c > 0){
-							// only have an interaction effect on the first celltype, to simplify matters
-								interactionCoefficient = new NormalDistribution(0, 0.3).sample();
-							}
-							if(s == 0){
-								infoWriter.write("\t"+Double.toString(interactionCoefficient));
-								expressionPerCelltypeWriterMap.get(celltypeName).write("QTL_"+Integer.toString(qtlCounter));
-							}
-							
-							double cellcountFactor = new NormalDistribution(scale(cellcountsPerSample.get(celltypeName).get(sampleName),
-									cellcountsPerSample.get(celltypeName).get("minCellcount"),	
-									cellcountsPerSample.get(celltypeName).get("maxCellcount"), 0, 4), 1).sample();
-						/*	
+				//NormalDistribution genotypeCoeficientDistribution = new NormalDistribution(-3 + (j*3), 0.3);
+				NormalDistribution genotypeCoeficientDistribution = new NormalDistribution(genotypeCoefficientMean, 0.3);
+				//NormalDistribution interactioncCefficientDistribution = new NormalDistribution(-30+ (y*3), 0.3);
+				NormalDistribution interactioncCefficientDistribution = new NormalDistribution(interactionCoefficientMean, 0.3);
+				for(double minorAlleleFrequency : minorAlleleFrequencyGroups){
+					// Make i number of QTLs
+					for (int i = 0; i < commandLineOptions.getNumberOfQtls()/(genotypeCoefficientGroups.length*interactionCoefficientGroups.length*minorAlleleFrequencyGroups.length)+1; i++){
+						// write the QTL name in first column
+						expressionWriter.write("QTL_"+Integer.toString(qtlCounter));
+						genotypeWriter.write("QTL_"+Integer.toString(qtlCounter));
+						// loop over the number of samples and calculate expression level
+						double averageCelltypeCoefficient = 0;
+						double averageGenotypeCoefficient = 0;
+						infoWriter.write("QTL_"+Integer.toString(qtlCounter));
+						for (int s = 0; s < commandLineOptions.getSampleSize(); s++){
+							double celltypeCoefficient = celltypeCoefficientDistribution.sample();
+							averageCelltypeCoefficient += celltypeCoefficient/commandLineOptions.getSampleSize();
+							double genotypeCoefficient = genotypeCoeficientDistribution.sample();
+							averageGenotypeCoefficient += genotypeCoefficient/commandLineOptions.getSampleSize();
+							double interactionCoefficient = interactioncCefficientDistribution.sample();
+							// Get the expression level for current QTL and current Sample. SD is low as between samples should not be high difference of "base" expression level 
+							// (variance should be mostly in the genotype and interaction coefficient)
+							double noiseSample = noiseDistribution.sample();
+							NormalDistribution noise = new NormalDistribution(noiseSample, Math.sqrt(Math.pow(noiseSample/6.0,2)));
+							double biologicalNoise = noise.sample();
+							double simulatedExpression = biologicalNoise;
+							// genotype randomly 0, 1 or 2, depending on the MAF
+							int genotype = new Random().ints(1, 0, 3).findFirst().getAsInt();
+							for (int c = 0; c <  commandLineOptions.getCellcountPercentages().length; c++){
+
+								String celltypeName = "celltype_"+Integer.toString(c);
+								String sampleName = "sample"+Integer.toString(s);
+								if(c > 0){
+									// only have an interaction effect on the first celltype, to simplify matters
+									interactionCoefficient = new NormalDistribution(0, 0.3).sample();
+								}
+								if(s == 0){
+									infoWriter.write("\t"+Double.toString(interactionCoefficient));
+									expressionPerCelltypeWriterMap.get(celltypeName).write("QTL_"+Integer.toString(qtlCounter));
+								}
+
+								double cellcountFactor = new NormalDistribution(scale(cellcountsPerSample.get(celltypeName).get(sampleName),
+										cellcountsPerSample.get(celltypeName).get("minCellcount"),	
+										cellcountsPerSample.get(celltypeName).get("maxCellcount"), 0, 4), 1).sample();
+								/*	
 						System.out.printf("Simulated expression: %f\ncelltypeCoefficient: %f\ngenotypeCoefficient:%f\ncellcountFactor: %f\ngenotype: %d\ninteractionCoefficient: %f\n"+
 										  "genotype: %d\ncellcountFactor: %f\nsimulatedExpression: %f\n", simulatedExpression,celltypeCoefficient, genotypeCoefficient, cellcountFactor, 
 										  genotype, interactionCoefficient, genotype, cellcountFactor, simulatedExpression);
@@ -168,41 +179,44 @@ public class QtlSimulator {
 								(celltypeCoefficient * cellcountFactor),(genotypeCoefficient * genotype), (interactionCoefficient * genotype * cellcountFactor), 
 								  genotype, interactionCoefficient, genotype, cellcountFactor, simulatedExpression);
 						System.out.println("-------------------------------");
-						 */
-							//simulatedExpression += interactionCoefficient * genotype * cellcountFactor;
-							// write the simulated expression per celltype
-							//expressionPerCelltypeWriterMap.get(celltypeName).write("\t"+Double.toString(biologicalNoise+(celltypeCoefficient * cellcountFactor) + 
-							//																												(genotypeCoefficient * genotype) + 
-							//																												(interactionCoefficient * genotype * cellcountFactor)));
-							double celltypeSpecificExpression = (celltypeCoefficient) +// * cellcountFactor) + 
-																(genotypeCoefficient * genotype) + 
-																(interactionCoefficient * genotype * cellcountFactor);
-							if(celltypeSpecificExpression < 0){
-								celltypeSpecificExpression = 0;
+								 */
+								//simulatedExpression += interactionCoefficient * genotype * cellcountFactor;
+								// write the simulated expression per celltype
+								//expressionPerCelltypeWriterMap.get(celltypeName).write("\t"+Double.toString(biologicalNoise+(celltypeCoefficient * cellcountFactor) + 
+								//																												(genotypeCoefficient * genotype) + 
+								//																												(interactionCoefficient * genotype * cellcountFactor)));
+								double celltypeSpecificExpression = (celltypeCoefficient) +// * cellcountFactor) + 
+										(genotypeCoefficient * genotype) + 
+										(interactionCoefficient * genotype * cellcountFactor);
+								if(celltypeSpecificExpression < 0){
+									celltypeSpecificExpression = 0;
+								}
+								simulatedExpression += celltypeSpecificExpression;
+								expressionPerCelltypeWriterMap.get(celltypeName).write("\t"+Double.toString(celltypeSpecificExpression));
 							}
-							simulatedExpression += celltypeSpecificExpression;
-							expressionPerCelltypeWriterMap.get(celltypeName).write("\t"+Double.toString(celltypeSpecificExpression));
-						}
-						// expression evel cant be lower than 0, if negative give it random number between 0 and 1 (reflects real life higher level of 0-1 genes as well
-						if (simulatedExpression < 0){
-							simulatedExpression = 0 + Math.random();
-						}
-						/*
+							// expression evel cant be lower than 0, if negative give it random number between 0 and 1 (reflects real life higher level of 0-1 genes as well
+							if (simulatedExpression < 0){
+								simulatedExpression = 0 + Math.random();
+							}
+							/*
 						System.out.printf("Simulated expression: %f\n", simulatedExpression);
 						System.out.println("----------------------------------");
 						System.exit(0);*/
-						//simulatedExpression = Math.pow(2, simulatedExpression);
-						expressionWriter.write("\t"+Double.toString(simulatedExpression));
-						genotypeWriter.write("\t"+Integer.toString(genotype));
-					}
-					infoWriter.write("\t"+Double.toString(averageCelltypeCoefficient) +
-							"\t"+Double.toString(averageGenotypeCoefficient));
-					infoWriter.newLine();
-					qtlCounter++;
-					expressionWriter.newLine();
-					genotypeWriter.newLine();
-					for(BufferedWriter w : expressionPerCelltypeWriterMap.values()){
-						w.newLine();
+							//simulatedExpression = Math.pow(2, simulatedExpression);
+							expressionWriter.write("\t"+Double.toString(simulatedExpression));
+							genotypeWriter.write("\t"+Integer.toString(genotype));
+						}
+						q++;
+						System.out.printf("%d/%d\n",q, commandLineOptions.getNumberOfQtls());
+						infoWriter.write("\t"+Double.toString(averageCelltypeCoefficient) +
+								"\t"+Double.toString(averageGenotypeCoefficient));
+						infoWriter.newLine();
+						qtlCounter++;
+						expressionWriter.newLine();
+						genotypeWriter.newLine();
+						for(BufferedWriter w : expressionPerCelltypeWriterMap.values()){
+							w.newLine();
+						}
 					}
 				}
 			}
@@ -222,7 +236,7 @@ public class QtlSimulator {
 			cellcountWriter.write("\tcelltype_"+Integer.toString(c));
 		}
 		cellcountWriter.newLine();
-		
+
 		Map<String, HashMap<String, Double>> cellcountsPerSample = new HashMap<String, HashMap<String, Double>>();
 		for (int s = 0; s < commandLineOptions.getSampleSize(); s++){
 			cellcountWriter.write("sample_"+Integer.toString(s));
@@ -270,14 +284,14 @@ public class QtlSimulator {
 		/*
 		 *              (b-a)(x - min)
 		 * 		f(x) = --------------  + a
-         *                max - min
-         *                
-         *  where min, max comes from cellcount, and a (limitMin), b (limitMax) is what I want to scale it to
+		 *                max - min
+		 *                
+		 *  where min, max comes from cellcount, and a (limitMin), b (limitMax) is what I want to scale it to
 		 */
 		/*
 		System.out.printf("limitMax: %s\tlimitMin: %s\tmin: %s\t max: %s\t value: %s\t result: %s\n", 
 				limitMax, limitMin, min, max, value, ((limitMax - limitMin) * (value - min) / (max -min)) + limitMin);
-			*/
-        return ((limitMax - limitMin) * (value - min) / (max -min)) + limitMin;
+		 */
+		return ((limitMax - limitMin) * (value - min) / (max -min)) + limitMin;
 	}
 }
