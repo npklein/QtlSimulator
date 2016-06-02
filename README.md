@@ -6,7 +6,7 @@ QTL Simulator simulates QTLs with c number of celltypes with for every QTL and e
 ```
 simulatedExpression = 0
 for number of celltypes do:
-    simulatedExpression += (B1 * cellcounts) + (B2 * genotype);
+    simulatedExpression += (B1 * cellcounts) + (B2 * genotype) + (B3 * genotype * interaction);
 done
 ```
 
@@ -14,6 +14,7 @@ where
 
     B1 = cellcount coefficient, e.g. if B1 > 0 the expression is correlated to cellcount  
     B2 = genotype coefficient (the QTL effecT). If B2 > 0 genotype has positive effect on expression, B2 < 0 genotype has negative effect on expression
+    B3 = interaction term coefficient.
     genotype = Random number 0, 1, or 2
     cellcounts = Normal distribution with mean a percentage given by the user (with commandline option -c)
 
